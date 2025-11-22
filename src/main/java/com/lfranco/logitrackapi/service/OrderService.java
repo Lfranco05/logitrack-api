@@ -4,6 +4,7 @@ import com.lfranco.logitrackapi.entity.Customer;
 import com.lfranco.logitrackapi.entity.Order;
 import com.lfranco.logitrackapi.entity.OrderItem;
 import com.lfranco.logitrackapi.entity.Product;
+import com.lfranco.logitrackapi.exception.BusinessException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
