@@ -18,10 +18,8 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class OrderResource {
 
-    // Instancia manual del servicio (sin CDI)
     private final OrderService service = new OrderService();
 
-    // LISTAR ÓRDENES
     @GET
     public List<Order> list(@QueryParam("customerId") Long customerId,
                             @QueryParam("status") String status,
@@ -43,21 +41,14 @@ public class OrderResource {
         return service.findAll();
     }
 
-    // OBTENER UNA ORDEN POR ID
-    @GET
-    @Path("/{id}")
-    public Order get(@PathParam("id") Long id) {
-        return service.findById(id);
-    }
 
-    // LISTAR ÓRDENES INCOMPLETAS
     @GET
     @Path("/incomplete")
     public List<Order> incomplete() {
         return service.findIncompleteOrders();
     }
 
-    // CREAR ORDEN
+
     @POST
     public Response create(CreateOrderRequest request) {
         Order created = service.createOrder(request.getCustomerId());
@@ -66,14 +57,12 @@ public class OrderResource {
                 .build();
     }
 
-    // AGREGAR ITEM A ORDEN
     @POST
     @Path("/{id}/items")
     public Order addItem(@PathParam("id") Long orderId, AddItemRequest request) {
         return service.addItem(orderId, request.getProductId(), request.getQuantity());
     }
 
-    // CAMBIAR ESTADO DE ORDEN
     @PATCH
     @Path("/{id}/status")
     public Order changeStatus(@PathParam("id") Long orderId, ChangeStatusRequest request) {
