@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+    <persistence-unit name="LogiTrackPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- ENTIDADES -->
+        <class>com.logitrack.api.entity.Product</class>
+        <class>com.logitrack.api.entity.Customer</class>
+        <class>com.logitrack.api.entity.Order</class>
+        <class>com.logitrack.api.entity.OrderItem</class>
+        <class>com.logitrack.api.entity.Payment</class>
+
+        <properties>
+
+            <!-- 📌 CONFIGURACIÓN POSTGRES -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+
+            <!-- CAMBIA estos valores según tu Docker -->
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5555/logitrackdb"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.password" value="postgres"/>
+
+            <!-- 📌 HIBERNATE -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.jdbc.lob.non_contextual_creation" value="true"/>
+
+        </properties>
+    </persistence-unit>
+
+</persistence>
