@@ -3,34 +3,32 @@ package com.lfranco.logitrackapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "payments")
-public class Payment {
+public class Payment implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long paymentId;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "order_id")
     private Order order;
 
-    @NotNull
     @Column(nullable = false)
-    private LocalDateTime paymentDate;
+    private LocalDateTime paymentDate = LocalDateTime.now();
 
-    @NotNull
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal amount;
 
-    @NotNull
     @Column(nullable = false, length = 20)
     private String method; // Cash, Card, Transfer
 
-    // Getters y setters
+    // Getters & setters
     public Long getPaymentId() {
         return paymentId;
     }

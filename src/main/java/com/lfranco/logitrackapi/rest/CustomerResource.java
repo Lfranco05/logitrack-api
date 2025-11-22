@@ -2,67 +2,70 @@ package com.lfranco.logitrackapi.rest;
 
 import com.lfranco.logitrackapi.entity.Customer;
 import com.lfranco.logitrackapi.service.CustomerService;
+import com.lfranco.logitrackapi.service.OrderService;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Path("/customers")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class CustomerResource {
 
+    // 👇 YA NO USAMOS @Inject — instancias manuales
     private final CustomerService service = new CustomerService();
+    private final OrderService orderService = new OrderService();
 
     @GET
-    public List<Customer> getAll() {
+    public List<Customer> list() {
         return service.findAll();
     }
 
     @GET
     @Path("/{id}")
-    public Response getById(@PathParam("id") Long id) {
-        Customer c = service.findById(id);
-        if (c == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(c).build();
+    public Customer get(@PathParam("id") Long id) {
+        return service.findById(id);
     }
 
     @GET
-    @Path("/tax/{taxId}")
-    public Response getByTaxId(@PathParam("taxId") String taxId) {
-        Customer c = service.findByTaxId(taxId);
-        if (c == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(c).build();
+    @Path("/by-taxid/{taxId}")
+    public Customer getByTaxId(@PathParam("taxId") String taxId) {
+        return service.findByTaxId(taxId);
     }
 
     @POST
-    public Response create(Customer c) {
-        Customer created = service.create(c);
-        return Response.status(Response.Status.CREATED).entity(created).build();
+    public Response create(Customer customer) {
+        Customer created = service.create(customer);
+        return Response.created(URI.create("/api/customers/" + created.getCustomerId()))
+                .entity(created)
+                .build();
     }
 
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") Long id, Customer c) {
-        Customer updated = service.update(id, c);
-        if (updated == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(updated).build();
+    public Customer update(@PathParam("id") Long id, Customer customer) {
+        return service.update(id, customer);
     }
 
-    @PUT
-    @Path("/{id}/deactivate")
-    public Response deactivate(@PathParam("id") Long id) {
-        Customer updated = service.deactivate(id);
-        if (updated == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(updated).build();
+    @PATCH
+    @Path("/{id}/status")
+    public Response changeStatus(@PathParam("id") Long id, @QueryParam("active") boolean active) {
+        service.changeStatus(id, active);
+        return Response.noContent().build();
+    }
+
+    @GET
+    @Path("/{id}/debt")
+    public Map<String, Object> getDebt(@PathParam("id") Long id) {
+        var debt = orderService.getTotalDebtByCustomer(id);
+        Map<String, Object> result = new HashMap<>();
+        result.put("customerId", id);
+        result.put("totalDebt", debt);
+        return result;
     }
 }

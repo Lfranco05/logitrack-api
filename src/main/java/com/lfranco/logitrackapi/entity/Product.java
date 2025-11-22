@@ -4,36 +4,33 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products")
-public class Product {
+public class Product implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long productId;
 
-    @NotBlank
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(length = 255)
+    @Column(length = 500)
     private String description;
 
-    @NotNull
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
-    @NotBlank
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 100)
     private String category;
 
-    @NotNull
     @Column(nullable = false)
-    private Boolean active = true;
+    private boolean active = true;
 
-    // Getters y setters
+    // Getters & setters
     public Long getProductId() {
         return productId;
     }
@@ -74,11 +71,11 @@ public class Product {
         this.category = category;
     }
 
-    public Boolean getActive() {
+    public boolean isActive() {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(boolean active) {
         this.active = active;
     }
 }

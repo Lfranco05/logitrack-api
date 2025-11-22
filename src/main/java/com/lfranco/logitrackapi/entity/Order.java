@@ -1,35 +1,78 @@
 package com.lfranco.logitrackapi.entity;
 
+import jakarta.json.bind.annotation.JsonbTransient;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
-public class Order {
+public class Order implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long orderId;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @JoinColumn(name = "customer_id")
     private Customer customer;
 
-    @NotNull
     @Column(nullable = false)
-    private LocalDateTime orderDate;
+    private LocalDateTime orderDate = LocalDateTime.now();
 
-    @NotNull
     @Column(nullable = false, length = 20)
-    private String status; // Pending, Processing, Completed, Cancelled
+    private String status = "Pending";
 
-    @Column(precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    // Getters y setters
+    // 👇 NO SERIALIZAR ITEMS → EVITA RECURSIÓN INFINITA
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonbTransient
+    private List<OrderItem> items = new ArrayList<>();
+
+    // 👇 TAMPOCO SERIALIZAR PAGOS
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonbTransient
+    private List<Payment> payments = new ArrayList<>();
+
+    // Helpers
+    public void addItem(OrderItem item) {
+        item.setOrder(this);
+        this.items.add(item);
+        recalculateTotal();
+    }
+
+    public void removeItem(OrderItem item) {
+        this.items.remove(item);
+        item.setOrder(null);
+        recalculateTotal();
+    }
+
+    public void recalculateTotal() {
+        this.totalAmount = items.stream()
+                .map(OrderItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @JsonbTransient
+    public BigDecimal getTotalPaid() {
+        return payments.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @JsonbTransient
+    public BigDecimal getPendingAmount() {
+        return totalAmount.subtract(getTotalPaid());
+    }
+
+    // Getters & setters
     public Long getOrderId() {
         return orderId;
     }
@@ -68,5 +111,24 @@ public class Order {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    @JsonbTransient
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
+        recalculateTotal();
+    }
+
+    @JsonbTransient
+    public List<Payment> getPayments() {
+        return payments;
+    }
+
+    public void setPayments(List<Payment> payments) {
+        this.payments = payments;
     }
 }

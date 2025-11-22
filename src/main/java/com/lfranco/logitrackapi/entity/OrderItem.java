@@ -1,47 +1,49 @@
 package com.lfranco.logitrackapi.entity;
 
+import jakarta.json.bind.annotation.JsonbTransient;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items")
-public class OrderItem {
+@IdClass(OrderItemId.class)
+public class OrderItem implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long orderItemId;
-
     @ManyToOne(optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "order_id")
+    @JsonbTransient   // 👈 necesario para evitar recursión
     private Order order;
 
+    @Id
     @ManyToOne(optional = false)
-    @JoinColumn(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id")
     private Product product;
 
-    @NotNull
     @Column(nullable = false)
     private Integer quantity;
 
-    @NotNull
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 
-    @NotNull
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal subtotal;
 
-    // Getters y setters
-    public Long getOrderItemId() {
-        return orderItemId;
+    @PrePersist
+    @PreUpdate
+    public void prePersist() {
+        if (unitPrice == null && product != null) {
+            unitPrice = product.getPrice();
+        }
+        if (quantity != null && unitPrice != null) {
+            subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
     }
 
-    public void setOrderItemId(Long orderItemId) {
-        this.orderItemId = orderItemId;
-    }
-
+    // Getters & setters
     public Order getOrder() {
         return order;
     }

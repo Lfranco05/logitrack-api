@@ -2,11 +2,15 @@ package com.lfranco.logitrackapi.rest;
 
 import com.lfranco.logitrackapi.entity.Order;
 import com.lfranco.logitrackapi.entity.OrderItem;
+import com.lfranco.logitrackapi.requets.AddItemRequest;
+import com.lfranco.logitrackapi.requets.ChangeStatusRequest;
+import com.lfranco.logitrackapi.requets.CreateOrderRequest;
 import com.lfranco.logitrackapi.service.OrderService;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Path("/orders")
@@ -14,77 +18,65 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class OrderResource {
 
+    // Instancia manual del servicio (sin CDI)
     private final OrderService service = new OrderService();
 
-    // Crear una orden para un cliente
-    @POST
-    public Response createOrder(@QueryParam("customerId") Long customerId) {
-        try {
-            Order created = service.createOrder(customerId);
-            return Response.status(Response.Status.CREATED).entity(created).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage())
-                    .build();
-        }
-    }
-
+    // LISTAR ÓRDENES
     @GET
-    @Path("/{id}")
-    public Response getById(@PathParam("id") Long id) {
-        Order o = service.findById(id);
-        if (o == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(o).build();
-    }
+    public List<Order> list(@QueryParam("customerId") Long customerId,
+                            @QueryParam("status") String status,
+                            @QueryParam("from") String from,
+                            @QueryParam("to") String to) {
 
-    @GET
-    public List<Order> getByFilters(@QueryParam("customerId") Long customerId,
-                                    @QueryParam("status") String status) {
-        // Simple: si llega customerId, filtramos por cliente, si no por status
         if (customerId != null) {
             return service.findByCustomer(customerId);
-        } else if (status != null && !status.isBlank()) {
+        }
+        if (status != null && !status.isBlank()) {
             return service.findByStatus(status);
-        } else {
-            // podría devolverse todo, pero lo dejamos simple por ahora
-            return service.findByStatus("Pending");
         }
+        if (from != null && to != null) {
+            LocalDate fromDate = LocalDate.parse(from);
+            LocalDate toDate = LocalDate.parse(to);
+            return service.findByDateRange(fromDate, toDate);
+        }
+
+        return service.findAll();
     }
 
-    // Agregar item a una orden
-    @POST
-    @Path("/{orderId}/items")
-    public Response addItem(@PathParam("orderId") Long orderId,
-                            @QueryParam("productId") Long productId,
-                            @QueryParam("quantity") Integer quantity) {
-        try {
-            OrderItem item = service.addItem(orderId, productId, quantity);
-            return Response.status(Response.Status.CREATED).entity(item).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage())
-                    .build();
-        }
+    // OBTENER UNA ORDEN POR ID
+    @GET
+    @Path("/{id}")
+    public Order get(@PathParam("id") Long id) {
+        return service.findById(id);
     }
 
-    // Cambiar estado de la orden
-    @PUT
-    @Path("/{orderId}/status")
-    public Response changeStatus(@PathParam("orderId") Long orderId,
-                                 @QueryParam("status") String status) {
-        Order updated = service.changeStatus(orderId, status);
-        if (updated == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(updated).build();
-    }
-
-    // Listar órdenes incompletas
+    // LISTAR ÓRDENES INCOMPLETAS
     @GET
     @Path("/incomplete")
-    public List<Order> getIncompleteOrders() {
+    public List<Order> incomplete() {
         return service.findIncompleteOrders();
+    }
+
+    // CREAR ORDEN
+    @POST
+    public Response create(CreateOrderRequest request) {
+        Order created = service.createOrder(request.getCustomerId());
+        return Response.status(Response.Status.CREATED)
+                .entity(created)
+                .build();
+    }
+
+    // AGREGAR ITEM A ORDEN
+    @POST
+    @Path("/{id}/items")
+    public Order addItem(@PathParam("id") Long orderId, AddItemRequest request) {
+        return service.addItem(orderId, request.getProductId(), request.getQuantity());
+    }
+
+    // CAMBIAR ESTADO DE ORDEN
+    @PATCH
+    @Path("/{id}/status")
+    public Order changeStatus(@PathParam("id") Long orderId, ChangeStatusRequest request) {
+        return service.changeStatus(orderId, request.getStatus());
     }
 }

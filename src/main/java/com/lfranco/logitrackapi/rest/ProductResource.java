@@ -6,6 +6,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.net.URI;
 import java.util.List;
 
 @Path("/products")
@@ -13,53 +14,41 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ProductResource {
 
+    // 👇 Instanciación manual — SIN CDI, SIN @Inject
     private final ProductService service = new ProductService();
 
     @GET
-    public List<Product> getAll() {
+    public List<Product> list(@QueryParam("category") String category) {
+        if (category != null && !category.isBlank()) {
+            return service.findByCategory(category);
+        }
         return service.findAll();
     }
 
     @GET
     @Path("/{id}")
-    public Response getById(@PathParam("id") Long id) {
-        Product p = service.findById(id);
-        if (p == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(p).build();
-    }
-
-    @GET
-    @Path("/category/{category}")
-    public List<Product> getByCategory(@PathParam("category") String category) {
-        return service.findByCategory(category);
+    public Product get(@PathParam("id") Long id) {
+        return service.findById(id);
     }
 
     @POST
-    public Response create(Product p) {
-        Product created = service.create(p);
-        return Response.status(Response.Status.CREATED).entity(created).build();
+    public Response create(Product product) {
+        Product created = service.create(product);
+        return Response.created(URI.create("/api/products/" + created.getProductId()))
+                .entity(created)
+                .build();
     }
 
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") Long id, Product p) {
-        Product updated = service.update(id, p);
-        if (updated == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(updated).build();
+    public Product update(@PathParam("id") Long id, Product product) {
+        return service.update(id, product);
     }
 
-    @PUT
+    @PATCH
     @Path("/{id}/status")
-    public Response changeStatus(@PathParam("id") Long id,
-                                 @QueryParam("active") boolean active) {
-        Product updated = service.changeActive(id, active);
-        if (updated == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(updated).build();
+    public Response changeStatus(@PathParam("id") Long id, @QueryParam("active") boolean active) {
+        service.changeStatus(id, active);
+        return Response.noContent().build();
     }
 }

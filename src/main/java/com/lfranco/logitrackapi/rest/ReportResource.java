@@ -1,45 +1,42 @@
 package com.lfranco.logitrackapi.rest;
 
-import com.lfranco.logitrackapi.service.PaymentService;
-import com.lfranco.logitrackapi.util.JPAUtil;
-import jakarta.persistence.EntityManager;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import com.lfranco.logitrackapi.entity.Product;
+import com.lfranco.logitrackapi.service.ReportService;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Path("/reports")
 @Produces(MediaType.APPLICATION_JSON)
 public class ReportResource {
 
-    private final PaymentService paymentService = new PaymentService();
+    // 👇 Sin CDI, sin @Inject — instanciación manual
+    private final ReportService service = new ReportService();
 
-    // Total adeudado por cliente
-    @GET
-    @Path("/customer/{customerId}/pending")
-    public BigDecimal getTotalPending(@PathParam("customerId") Long customerId) {
-        return paymentService.getTotalPendingByCustomer(customerId);
-    }
-
-    // Productos más vendidos (simple: productoId + cantidad total)
     @GET
     @Path("/top-products")
-    public List<Object[]> getTopProducts() {
-        EntityManager em = JPAUtil.getEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT oi.product.productId, oi.product.name, SUM(oi.quantity) " +
-                                    "FROM OrderItem oi " +
-                                    "GROUP BY oi.product.productId, oi.product.name " +
-                                    "ORDER BY SUM(oi.quantity) DESC",
-                            Object[].class)
-                    .getResultList();
-        } finally {
-            em.close();
+    public List<Map<String, Object>> topProducts(@QueryParam("limit") @DefaultValue("10") int limit) {
+
+        List<Object[]> raw = service.findTopSellingProducts(limit);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Object[] row : raw) {
+            Product p = (Product) row[0];
+            Long totalQty = (Long) row[1];
+
+            Map<String, Object> m = new HashMap<>();
+            m.put("productId", p.getProductId());
+            m.put("name", p.getName());
+            m.put("category", p.getCategory());
+            m.put("totalQuantity", totalQty);
+
+            result.add(m);
         }
+
+        return result;
     }
 }

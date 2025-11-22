@@ -2,8 +2,10 @@ package com.lfranco.logitrackapi.service;
 
 import com.lfranco.logitrackapi.entity.Order;
 import com.lfranco.logitrackapi.entity.Payment;
-import com.lfranco.logitrackapi.util.JPAUtil;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,84 +13,64 @@ import java.util.List;
 
 public class PaymentService {
 
+    private final EntityManagerFactory emf =
+            Persistence.createEntityManagerFactory("LogiTrackPU");
+
+    private EntityManager getEm() {
+        return emf.createEntityManager();
+    }
+
     public Payment registerPayment(Long orderId, BigDecimal amount, String method) {
-        EntityManager em = JPAUtil.getEntityManager();
-        try {
-            em.getTransaction().begin();
+        EntityManager em = getEm();
+        em.getTransaction().begin();
 
-            Order order = em.find(Order.class, orderId);
-            if (order == null) {
-                em.getTransaction().rollback();
-                throw new IllegalArgumentException("Order no encontrada");
-            }
-
-            // Total pagado hasta ahora
-            BigDecimal totalPaid = em.createQuery(
-                            "SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.order = :ord",
-                            BigDecimal.class)
-                    .setParameter("ord", order)
-                    .getSingleResult();
-
-            BigDecimal totalOrder = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
-            BigDecimal pending = totalOrder.subtract(totalPaid);
-
-            if (amount.compareTo(pending) > 0) {
-                em.getTransaction().rollback();
-                throw new IllegalArgumentException("El pago excede el saldo pendiente");
-            }
-
-            Payment payment = new Payment();
-            payment.setOrder(order);
-            payment.setPaymentDate(LocalDateTime.now());
-            payment.setAmount(amount);
-            payment.setMethod(method);
-
-            em.persist(payment);
-            em.getTransaction().commit();
-            return payment;
-        } finally {
+        Order order = em.find(Order.class, orderId);
+        if (order == null) {
+            em.getTransaction().rollback();
             em.close();
+            throw new BusinessException("Order not found with id " + orderId);
         }
+
+        if (amount == null || amount.signum() <= 0) {
+            em.getTransaction().rollback();
+            em.close();
+            throw new BusinessException("Payment amount must be positive.");
+        }
+
+        BigDecimal pending = order.getPendingAmount();
+        if (amount.compareTo(pending) > 0) {
+            em.getTransaction().rollback();
+            em.close();
+            throw new BusinessException("Payment exceeds pending amount for the order.");
+        }
+
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setAmount(amount);
+        payment.setMethod(method);
+        payment.setPaymentDate(LocalDateTime.now());
+
+        em.persist(payment);
+        order.getPayments().add(payment);
+        em.merge(order);
+
+        em.getTransaction().commit();
+        em.close();
+        return payment;
     }
 
     public List<Payment> findByOrder(Long orderId) {
-        EntityManager em = JPAUtil.getEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT p FROM Payment p WHERE p.order.orderId = :oid",
-                            Payment.class)
-                    .setParameter("oid", orderId)
-                    .getResultList();
-        } finally {
-            em.close();
-        }
-    }
+        EntityManager em = getEm();
 
-    public BigDecimal getTotalPendingByCustomer(Long customerId) {
-        EntityManager em = JPAUtil.getEntityManager();
-        try {
-            // Suma (totalOrden - pagos) por cada orden del cliente
-            List<Order> orders = em.createQuery(
-                            "SELECT o FROM Order o WHERE o.customer.customerId = :cid",
-                            Order.class)
-                    .setParameter("cid", customerId)
-                    .getResultList();
+        TypedQuery<Payment> q = em.createQuery(
+                "SELECT p FROM Payment p WHERE p.order.orderId = :oid",
+                Payment.class
+        );
 
-            BigDecimal totalPending = BigDecimal.ZERO;
+        q.setParameter("oid", orderId);
 
-            for (Order o : orders) {
-                BigDecimal totalOrder = o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO;
-                BigDecimal paid = em.createQuery(
-                                "SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.order = :ord",
-                                BigDecimal.class)
-                        .setParameter("ord", o)
-                        .getSingleResult();
-                totalPending = totalPending.add(totalOrder.subtract(paid));
-            }
-
-            return totalPending;
-        } finally {
-            em.close();
-        }
+        List<Payment> list = q.getResultList();
+        em.close();
+        return list;
     }
 }

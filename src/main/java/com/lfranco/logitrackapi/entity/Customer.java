@@ -5,37 +5,32 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
+
 @Entity
-@Table(name = "customers",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_customer_taxid", columnNames = "taxId")
-        })
-public class Customer {
+@Table(name = "customers")
+public class Customer implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerId;
 
-    @NotBlank
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 200)
     private String fullName;
 
-    @NotBlank
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, unique = true, length = 30)
     private String taxId;
 
-    @Email
-    @Column(length = 100)
+    @Column(nullable = false, length = 150)
     private String email;
 
-    @Column(length = 255)
+    @Column(nullable = false, length = 250)
     private String address;
 
-    @NotNull
     @Column(nullable = false)
-    private Boolean active = true;
+    private boolean active = true;
 
-    // Getters y setters
+    // Getters & setters
     public Long getCustomerId() {
         return customerId;
     }
@@ -76,11 +71,11 @@ public class Customer {
         this.address = address;
     }
 
-    public Boolean getActive() {
+    public boolean isActive() {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(boolean active) {
         this.active = active;
     }
 }
